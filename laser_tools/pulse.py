@@ -90,12 +90,12 @@ class RealPulse:
         self.backward()
 
     def get_time_signal(self, units = "s") -> np.array:
-        return {"units" : units, "xvals" : self.time_axis, "intensities" : self.It()}
+        return {"units" : units, "xvals" : self.time_axis, "intensities" : self.It}
 
     def get_spectrum(self, units = "wavelength") -> dict:
 
         ## Need to add jacobian
-        return {"units" : units, "xvals" : conv_wl_freq(self.frequency_axis), "intensities" : self.If()}
+        return {"units" : units, "xvals" : conv_wl_freq(self.frequency_axis), "intensities" : self.If}
         #pass
 
 
@@ -198,18 +198,11 @@ def from_spectrum(wavelength, intensities, N: int, dt: float) -> RealPulse:
 
     spectrum_interpolator = CubicSpline(spectrum_frequency, intensities, extrapolate=False)
 
-    #blah = np.sqrt(spectrum_interpolator(pulse.frequency_axis))
-    #print(blah)
-
     pulse.Ef = np.nan_to_num(np.sqrt(spectrum_interpolator(pulse.frequency_axis)))
-    print("Energy here freq pre xform = ", np.trapezoid(pulse.If, x=pulse.frequency_axis))
+
     pulse.backward()
-    pulse.forward()
-    print("forward")
 
 
-    print("Energy here time = ", np.trapezoid(pulse.It, x=pulse.time_axis))
-    print("Energy here freq post xform = ", np.trapezoid(pulse.If, x=pulse.frequency_axis))
 
     return pulse
 

@@ -3,6 +3,7 @@ import scipy.constants as const
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+import os
 
 
 #import matplotlib.pyplot as plt
@@ -22,7 +23,10 @@ class Goggle(): # Parent class that
 
     def load_data(self, data_file: str, unit = "nm"):
 
-        goggle_data = np.loadtxt(data_file, delimiter=",", skiprows=1)
+        this_dir, this_filename = os.path.split(__file__)
+        DATA_PATH = os.path.join(this_dir, "data", data_file)
+
+        goggle_data = np.loadtxt(DATA_PATH, delimiter=",", skiprows=1)
 
         match unit:
             case "Hz":
@@ -70,25 +74,22 @@ class Goggle(): # Parent class that
     def valid_indices(self, frequencies):
         return np.argwhere((frequencies > self.min_frequency) & (frequencies < self.max_frequency))
 
+class DBY(Goggle):
+    def __init__(self):
+        self.load_data('DBY.csv')
 
 class C1033(Goggle):
-
     def __init__(self):
-
-        data_file = 'laser_tools/data/C1033.csv'
-        self.load_data(data_file)
+        self.load_data('C1033.csv')
 
 class C1023(Goggle):
     def __init__(self):
-        data_file = "laser_tools/data/C1023.csv"
-        self.load_data(data_file)
+        self.load_data('C1023.csv')
 
 class T5H03(Goggle):
     def __init__(self):
-        data_file = 'laser_tools/data/T5H03.csv'
-        self.load_data(data_file)
+        self.load_data('T5H03.csv')
 
 class T5H05(Goggle):
     def __init__(self):
-        data_file = 'laser_tools/data/T5H05.csv'
-        self.load_data(data_file)
+        self.load_data('T5H05.csv')

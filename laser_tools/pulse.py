@@ -1,3 +1,5 @@
+from unittest import case
+
 import numpy as np
 from scipy.signal import hilbert
 import scipy.constants as const
@@ -69,13 +71,12 @@ class RealPulse:
         self.Ef = np.sqrt(value)
 
     @property
-    def energy(self) -> float:
-        #return np.trapezoid(self.It, x = self.time_axis)
+    def energy(self) -> float: # Returns integrated spectral energy in joules
         return np.trapezoid(self.If, x = self.frequency_axis)
 
     @energy.setter
     def energy(self, value : float):
-        self.It = np.divide(value * self.It, self.energy)
+        self.If = np.divide(value * self.If, self.energy)
 
     def forward(self):
         self.Ef = np.fft.rfft(self.Et) * self.normalization_factor # Add the normalization
@@ -89,13 +90,60 @@ class RealPulse:
         self.Ef = self.Ef*np.exp(1j*spectral_phase)
         self.backward()
 
-    def get_time_signal(self, units = "s") -> np.array:
-        return {"units" : units, "xvals" : self.time_axis, "intensities" : self.It}
+    def get_time_signal(self, units : str = 's') -> dict:
 
-    def get_spectrum(self, units = "wavelength") -> dict:
 
+        try:
+            match units.lower():
+                case "s" | 'second' |'seconds':
+                    unit = "s"
+                    factor = 1
+                case "ms" | 'milli' | 'millis' | 'millisecond' | 'milliseconds':
+                    unit = "ms"
+                    factor = 1E3
+                case "us" | 'micro' | 'micros' | 'microsecond' | 'microseconds':
+                    unit = "us"
+                    factor = 1E6
+                case "ns" | 'nano' | 'nanos' | 'nanosecond' | 'nanoseconds':
+                    unit = "ns"
+                    factor = 1E9
+                case "ps" | 'pico' | 'picos' | 'picosecond' | 'picoseconds':
+                    unit = "ps"
+                    factor = 1E12
+                case "fs" | 'femto' | 'femtos' | 'femtosecond' | 'femtoseconds':
+                    unit = "fs"
+                    factor = 1E15
+                case "as" | 'atto' | 'attos' | 'attosecond' | 'attoseconds':
+                    unit = "as"
+                    factor = 1E18
+        except ValueError:
+            print("Invalid units given.")
+        else:
+            return{"units": unit, "xvals": np.multiply(self.time_axis, factor), "intensities": np.divide(self.It, factor)}
+
+    def get_spectrum(self, units : str = 'Hz') -> dict:
+
+        try:
+            match units.lower():
+                case 'hz' | 'hertz':
+                    unit = "Hz"
+                    xvals = self.frequency_axis
+                    intensities = self.If
+                case 'nm' | 'nanometers' | 'nanometres':
+                    unit = "nm"
+                    print("Here")
+                    # convert to GHz first
+                    xvals = np.divide(self.frequency_axis, 1E9)
+                    # Then convert to divide. This stops run overflow caued by 1/0 gets set as max float which then has to be multiplied by 1E9
+                    xvals = conv_wl_freq(np.flip(xvals))
+                    # Now treat the intensities with the appropriate Jacobian
+                    intensities = np.flip(self.If)*1E9 * conv_wl_freq(np.power(xvals, 2))
+
+        except ValueError:
+            print("Invalid units given.")
+        else:
         ## Need to add jacobian
-        return {"units" : units, "xvals" : conv_wl_freq(self.frequency_axis), "intensities" : self.If}
+            return {"units" : unit, "xvals" : xvals, "intensities" : intensities}
         #pass
 
 
@@ -152,7 +200,7 @@ def abs2(field : np.array) -> np.array:
     return np.power(np.abs(field), 2)
 
 def conv_wl_freq(value : float) -> float:
-    return np.divide(const.c, value)
+    return np.nan_to_num(np.divide(const.c, value), neginf=0, posinf=0)
 
 def find_fwhm_interpolate(xs, ys):
     half_max = np.max(ys) / 2
@@ -192,17 +240,14 @@ def from_spectrum(wavelength, intensities, N: int, dt: float) -> RealPulse:
     pulse = RealPulse(N, dt)
     pulse.make_axes(N, dt)
 
-    spectrum_frequency = np.flip(np.divide(const.c, wavelength))
-    intensities = np.flip(intensities)
-    intensities = intensities * (np.divide(const.c, np.power(spectrum_frequency, 2))) # Jacobian
+    spectrum_frequency = np.flip(conv_wl_freq(wavelength))
+    intensities = np.flip(intensities) * (np.divide(const.c, np.power(spectrum_frequency, 2))) # Jacobian
 
     spectrum_interpolator = CubicSpline(spectrum_frequency, intensities, extrapolate=False)
 
-    pulse.Ef = np.nan_to_num(np.sqrt(spectrum_interpolator(pulse.frequency_axis)))
+    pulse.Ef = np.nan_to_num(np.sqrt(spectrum_interpolator(pulse.frequency_axis)), posinf=0, neginf=0)
 
     pulse.backward()
-
-
 
     return pulse
 

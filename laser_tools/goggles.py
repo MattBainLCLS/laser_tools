@@ -8,6 +8,11 @@ import os
 
 #import matplotlib.pyplot as plt
 
+def available():
+    DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
+    return os.listdir(DATA_PATH)
+
+
 
 class Goggle(): # Parent class that
 
@@ -23,8 +28,7 @@ class Goggle(): # Parent class that
 
     def load_data(self, data_file: str, unit = "nm"):
 
-        this_dir, this_filename = os.path.split(__file__)
-        DATA_PATH = os.path.join(this_dir, "data", data_file)
+        DATA_PATH = DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
 
         goggle_data = np.loadtxt(DATA_PATH, delimiter=",", skiprows=1)
 

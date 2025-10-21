@@ -6,8 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="396284f6-5b28-4d97-a784-3eb1512dcc29" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/example.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/laser_tools/pulse.py" beforeDir="false" afterPath="$PROJECT_DIR$/laser_tools/pulse.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/laser_tools/goggles.py" beforeDir="false" afterPath="$PROJECT_DIR$/laser_tools/goggles.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,7 +81,7 @@
       <option name="presentableId" value="Default" />
       <updated>1759861529848</updated>
       <workItem from="1759861531099" duration="47658000" />
-      <workItem from="1760829663773" duration="7073000" />
+      <workItem from="1760829663773" duration="15753000" />
     </task>
     <servers />
   </component>

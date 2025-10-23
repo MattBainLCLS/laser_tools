@@ -10,7 +10,9 @@ import os
 
 def available():
     DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
-    return os.listdir(DATA_PATH)
+    files = [os.path.splitext(file)[0] for file in os.listdir(DATA_PATH)]
+
+    return files
 
 
 
@@ -28,7 +30,7 @@ class Goggle(): # Parent class that
 
     def load_data(self, data_file: str, unit = "nm"):
 
-        DATA_PATH = DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
+        DATA_PATH = os.path.join(os.path.dirname(__file__), "data", data_file)
 
         goggle_data = np.loadtxt(DATA_PATH, delimiter=",", skiprows=1)
 
@@ -41,6 +43,7 @@ class Goggle(): # Parent class that
                 self.frequencies = np.divide(const.c, goggle_data[:,0])
 
         self.optical_densities = goggle_data[:,1]
+        # As is optical density (e.g unitless due to ratio) no Jacobian required
 
         # Checks for whether monotonically increasing or not and corrects. Required for subsequent interpolation
         if np.any(np.diff(self.frequencies) < 0):

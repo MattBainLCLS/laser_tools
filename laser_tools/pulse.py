@@ -230,7 +230,7 @@ def gaussian_time(N : int, dt : float, t_fwhm : float, wavelength : float = 800E
     prefactor = np.reciprocal(np.sqrt(2 * const.pi * np.power(sd_t, 2)))
     env_t = pulse_energy*prefactor*np.exp(-0.5*np.power(np.divide(pulse.time_axis, sd_t), 2))
     pulse.carrier_frequency = conv_wl_freq(wavelength)
-    pulse.Et(np.sqrt(env_t))
+    pulse.Et = np.sqrt(env_t)
     pulse.apply_carrier_frequency()
     pulse.forward()
 

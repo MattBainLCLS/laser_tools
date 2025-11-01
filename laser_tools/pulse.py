@@ -131,7 +131,6 @@ class RealPulse:
                     intensities = self.If
                 case 'nm' | 'nanometers' | 'nanometres':
                     unit = "nm"
-                    print("Here")
                     # convert to GHz first
                     xvals = np.divide(self.frequency_axis, 1E9)
                     # Then convert to divide. This stops run overflow caued by 1/0 gets set as max float which then has to be multiplied by 1E9

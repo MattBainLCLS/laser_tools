@@ -5,6 +5,7 @@ from scipy.signal import hilbert
 import scipy.constants as const
 import scipy.special
 from scipy.interpolate import CubicSpline
+from numbers import Number
 
 import laser_tools.goggles
 
@@ -17,8 +18,10 @@ class RealPulse:
 
         self.time_axis : np.array = np.empty(shape=(1,), dtype=np.float64)
         self.frequency_axis : np.array = np.empty(shape=(1,), dtype=np.float64)
-        self.Et: np.array = np.empty(shape=(1,), dtype=np.float64)
-        self.Ef: np.array = np.empty(shape=(1,), dtype=np.complex128)
+        self.Et_v: np.array = np.empty(shape=(1,), dtype=np.float64)
+        self.Et_h: np.array = np.empty(shape=(1,), dtype=np.float64)
+        self.Ef_v: np.array = np.empty(shape=(1,), dtype=np.complex128)
+        self.Ef_h: np.array = np.empty(shape=(1,), dtype=np.complex128)
 
         self.carrier_frequency : float = None
 
@@ -30,45 +33,32 @@ class RealPulse:
         lim = dt*(N/2)
         self.time_axis = np.arange(-lim, lim, dt)
         self.frequency_axis = np.fft.rfftfreq(N, dt)
-        self.Et: np.array = np.zeros(shape=np.shape(self.time_axis), dtype=np.float64)
-        self.Ef: np.array = np.zeros(shape=np.shape(self.frequency_axis), dtype=np.complex128)
-        self._accumulated_phase = np.zeros(np.shape(self.frequency_axis))
+        self.Et_v: np.array = np.zeros(shape=np.shape(self.time_axis), dtype=np.float64)
+        self.Et_h: np.array = np.zeros(shape=np.shape(self.time_axis), dtype=np.float64)
+        self.Ef_v: np.array = np.zeros(shape=np.shape(self.frequency_axis), dtype=np.complex128)
+        self.Ef_h: np.array = np.zeros(shape=np.shape(self.frequency_axis), dtype=np.complex128)
+
+        self._accumulated_phase_v = np.zeros(np.shape(self.frequency_axis))
+        self._accumulated_phase_h = np.zeros(np.shape(self.frequency_axis))
 
         self.normalization_factor = 2*dt # Normalization factor for rfft
 
-    @property
-    def Et(self):
-        return self._Et
-
-    @Et.setter
-    def Et(self, value : np.array):
-        self._Et = value
-        #self.forward()
-
-    @property
-    def Ef(self) -> np.array:
-        return self._Ef
-
-    @Ef.setter
-    def Ef(self, value : np.array):
-        self._Ef = value
-        #self.backward()
 
     @property
     def It(self) -> np.array:
-        return abs2(hilbert(self.Et))
+        return abs2(hilbert(self.Et_v)) + abs2(hilbert(self.Et_h))
 
-    @It.setter
-    def It(self, value : np.array):
-        self.Et = np.sqrt(value)
+    #@It.setter
+    #def It(self, value : np.array):
+    #    self.Et = np.sqrt(value)
 
     @property
     def If(self) -> np.array:
-        return abs2(self.Ef)
+        return abs2(self.Ef_v) + abs2(self.Ef_h)
 
-    @If.setter
-    def If(self, value : np.array):
-        self.Ef = np.sqrt(value)
+    #@If.setter
+    #def If(self, value : np.array):
+    #    self.Ef = np.sqrt(value)
 
     @property
     def energy(self) -> float: # Returns integrated spectral energy in joules
@@ -76,18 +66,24 @@ class RealPulse:
 
     @energy.setter
     def energy(self, value : float):
-        self.If = np.divide(value * self.If, self.energy)
+        factor = value / self.energy
+        self.Ef_v /= factor
+        self.Ef_h /= factor
 
     def forward(self):
-        self.Ef = np.fft.rfft(self.Et) * self.normalization_factor # Add the normalization
+        self.Ef_v = np.fft.rfft(self.Et_v) * self.normalization_factor # Add the normalization
+        self.Ef_h = np.fft.rfft(self.Et_h) * self.normalization_factor # Add the normalization
 
     def backward(self):
-        self.Et = np.fft.irfft(np.divide(self.Ef, self.normalization_factor)) # Add the normalization
+        self.Et_v = np.fft.irfft(np.divide(self.Ef_v, self.normalization_factor)) # Add the normalization
+        self.Et_h = np.fft.irfft(np.divide(self.Ef_h, self.normalization_factor)) # Add the normalization
 
     def apply_spectral_phase(self, spectral_phase : np.array):
 
-        self._accumulated_phase += spectral_phase
-        self.Ef = self.Ef*np.exp(1j*spectral_phase)
+        self._accumulated_phase_v += spectral_phase
+        self._accumulated_phase_h += spectral_phase
+        self.Ef_v = self.Ef_v*np.exp(1j*spectral_phase)
+        self.Ef_h = self.Ef_h*np.exp(1j*spectral_phase)
         self.backward()
 
     def get_time_signal(self, units : str = 's') -> dict:
@@ -141,13 +137,7 @@ class RealPulse:
         except ValueError:
             print("Invalid units given.")
         else:
-        ## Need to add jacobian
             return {"units" : unit, "xvals" : xvals, "intensities" : intensities}
-        #pass
-
-
-
-
 
     def remove_carrier_frequency(self):
         pass
@@ -156,7 +146,8 @@ class RealPulse:
     def apply_carrier_frequency(self):
         self.remove_carrier_frequency()
         #self.Et = self.Et*np.exp(1j * 2 * const.pi * self.carrier_frequency * self.time_axis)
-        self.Et = self.Et * np.cos(2 * const.pi * self.carrier_frequency * self.time_axis)
+        self.Et_v *= np.cos(2 * const.pi * self.carrier_frequency * self.time_axis)
+        self.Et_h *= np.cos(2 * const.pi * self.carrier_frequency * self.time_axis)
 
     def apply_phase(self, taylors):
         self.remove_carrier_frequency()
@@ -169,21 +160,16 @@ class RealPulse:
 
         return phase ## delete later
 
-        #phi = (taylors[1] * 2 * const.pi * self.frequencies) + (
-                    #taylors[2] * (np.power(2 * const.pi * self.frequencies, 2) / scipy.special.factorial(2)))
-
     def remove_phase(self):
-        #phase = np.arctan(np.divide(np.imag(self.Ef), np.real(self.Ef)))
-        #phase = np.unwrap(np.angle(self.Ef))
-        self.Ef = self.Ef * np.exp(-1j * self._accumulated_phase)
-        self._accumulated_phase = np.zeros(np.shape(self._accumulated_phase))
-        #self.Ef = np.sqrt(abs2(self.Ef))
-
+        self.Ef_v = self.Ef_v * np.exp(-1j * self._accumulated_phase_v)
+        self.Ef_h = self.Ef_h * np.exp(-1j * self._accumulated_phase_h)
+        self._accumulated_phase_v = np.zeros(np.shape(self._accumulated_phase_v))
+        self._accumulated_phase_h = np.zeros(np.shape(self._accumulated_phase_h))
         self.backward()
 
     def t_fwhm(self, method = "interpolate"):
         if method == "interpolate":
-            return find_fwhm_interpolate(self.time_axis, self.It())
+            return find_fwhm_interpolate(self.time_axis, self.It)
 
     def propagate_material(self, material, length = 1E-3, anti_reflective = False):
         wavelengths = (const.c/self.frequency_axis)*1E6
@@ -222,14 +208,29 @@ def find_fwhm_interpolate(xs, ys):
     fwhm = x_upper - x_lower
     return np.abs(fwhm)
 
-def gaussian_time(N : int, dt : float, t_fwhm : float, wavelength : float = 800E-9, pulse_energy: float = 1) -> RealPulse:
+def gaussian_time(N : int, dt : float, t_fwhm : float, wavelength : float = 800E-9, pulse_energy: float = 1, polarisation = 1.0) -> RealPulse:
     pulse = RealPulse(N, dt)
     pulse.make_axes(N, dt)
     sd_t = t_fwhm/2.355
     prefactor = np.reciprocal(np.sqrt(2 * const.pi * np.power(sd_t, 2)))
     env_t = pulse_energy*prefactor*np.exp(-0.5*np.power(np.divide(pulse.time_axis, sd_t), 2))
     pulse.carrier_frequency = conv_wl_freq(wavelength)
-    pulse.Et = np.sqrt(env_t)
+    if isinstance(polarisation, str):
+        match polarisation:
+            case 'v' | 'ver' | 'vertical':
+                pulse.Et_v = np.sqrt(env_t)
+            case 'h' | 'hor' | 'horizontal':
+                pulse.Et_h = np.sqrt(env_t)
+            case _:
+                raise ValueError("Invalid polarisation state.")
+    elif isinstance(polarisation, Number):
+        if (polarisation < 0) or (polarisation > 1):
+            raise ValueError("Numerical polarisation must be equal to or between 0 and 1.")
+        pulse.Et_v = np.sqrt(env_t * polarisation)
+        pulse.Et_h = np.sqrt(env_t * (1- polarisation))
+    else:
+        raise ValueError("Invalid polarisation specification")
+    
     pulse.apply_carrier_frequency()
     pulse.forward()
 

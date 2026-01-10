@@ -180,6 +180,15 @@ class RealPulse:
 
         self.apply_spectral_phase(phase)
 
+    def Stokes(self, normalise=False):
+        I = abs2(self.Ef_v) + abs2(self.Ef_h)
+        Q = abs2(self.Ef_v) - abs2(self.Ef_h)
+        U = 2*np.real(self.Ef_v*np.conj(self.Ef_h))
+        V = -2*np.imag(self.Ef_v*np.conj(self.Ef_h))
+        S = np.asarray(((I, Q), (U, V)))
+        return S if not normalise else (S / np.max(I))
+
+
 
 def abs2(field : np.array) -> np.array:
     return np.power(np.abs(field), 2)
@@ -235,6 +244,7 @@ def gaussian_time(N : int, dt : float, t_fwhm : float, wavelength : float = 800E
     pulse.forward()
 
     return pulse
+
 
 def from_spectrum(wavelength, intensities, N: int, dt: float) -> RealPulse:
     pulse = RealPulse(N, dt)
